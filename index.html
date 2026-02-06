@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Snake</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      font-family: Georgia, "Times New Roman", Times, serif;
+      background: #1a1a1a;
+      color: #e8e8e8;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #score { margin-bottom: 0.5rem; font-size: 1rem; }
+    #canvas {
+      display: block;
+      background: #252525;
+      border: 2px solid #444;
+    }
+    #over {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.85);
+      font-size: 1.25rem;
+    }
+    #over.show { display: flex; }
+    #over p { margin: 0 0 1rem; }
+    #over span { font-size: 0.9rem; opacity: 0.8; }
+    #over .quote-link {
+      display: block;
+      max-width: 80%;
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      color: #4ade80;
+      font-size: 1rem;
+      font-style: italic;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid #444;
+      border-radius: 4px;
+    }
+    #over .quote-link:hover { text-decoration: underline; background: rgba(74, 222, 128, 0.1); }
+    .construction { font-size: 1rem; opacity: 0.8; margin-bottom: 0.5rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <p class="construction">Nothing to see here yet...maybe something in the future</p>
+  <div id="score">Score: 0</div>
+  <canvas id="canvas" width="300" height="300"></canvas>
+  <div id="over">
+    <p>Game over</p>
+    <span>Tap or press space to play again</span>
+    <a id="overQuote" class="quote-link" href="https://youtu.be/nGt_JGHYEO4?si=dODKEWdweWbuGSAG" target="_blank" rel="noopener"></a>
+  </div>
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const overEl = document.getElementById("over");
+    const overQuoteEl = document.getElementById("overQuote");
+
+    const LIFT_QUOTES = [
+      "Every expert was once a beginner.",
+      "The only bad workout is the one you didn’t do.",
+      "You’re one step closer than you were yesterday.",
+      "Mistakes are proof that you’re trying.",
+      "Take a breath. Then try again.",
+      "Progress, not perfection.",
+      "You’re allowed to have a bad game.",
+      "Don't be afraid to fail. Be afraid not to try.",
+      "The only way to do great work is to love what you do.",
+      "Sometimes losing means you're one step closer to winning.",
+      "Its all game.",
+      "Without losing there is no winning."
+    ];
+
+    const GRID = 15;
+    const W = canvas.width;
+    const H = canvas.height;
+    const COLS = Math.floor(W / GRID);
+    const ROWS = Math.floor(H / GRID);
+
+    let snake = [{ x: Math.floor(COLS / 2), y: Math.floor(ROWS / 2) }];
+    let dir = { x: 1, y: 0 };
+    let nextDir = { x: 1, y: 0 };
+    let food = { x: 0, y: 0 };
+    let score = 0;
+    let gameOver = false;
+    let lastTouch = { x: 0, y: 0 };
+
+    function randCell() {
+      return { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+    }
+
+    function placeFood() {
+      do {
+        food = randCell();
+      } while (snake.some(s => s.x === food.x && s.y === food.y));
+    }
+
+    function draw() {
+      ctx.fillStyle = "#252525";
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = "#4ade80";
+      snake.forEach((s, i) => {
+        ctx.fillRect(s.x * GRID + 1, s.y * GRID + 1, GRID - 2, GRID - 2);
+      });
+
+      ctx.fillStyle = "#f87171";
+      ctx.fillRect(food.x * GRID + 1, food.y * GRID + 1, GRID - 2, GRID - 2);
+    }
+
+    function tick() {
+      if (gameOver) return;
+      dir = nextDir;
+      const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+      if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS ||
+          snake.some(s => s.x === head.x && s.y === head.y)) {
+        gameOver = true;
+        overQuoteEl.textContent = LIFT_QUOTES[Math.floor(Math.random() * LIFT_QUOTES.length)];
+        overEl.classList.add("show");
+        return;
+      }
+      snake.unshift(head);
+      if (head.x === food.x && head.y === food.y) {
+        score++;
+        scoreEl.textContent = "Score: " + score;
+        placeFood();
+      } else {
+        snake.pop();
+      }
+      draw();
+    }
+
+    placeFood();
+    draw();
+    setInterval(tick, 120);
+
+    document.addEventListener("keydown", (e) => {
+      if (gameOver) {
+        if (e.code === "Space") { e.preventDefault(); restart(); }
+        return;
+      }
+      e.preventDefault();
+      switch (e.key) {
+        case "ArrowUp":    if (dir.y === 0) nextDir = { x: 0, y: -1 }; break;
+        case "ArrowDown":  if (dir.y === 0) nextDir = { x: 0, y: 1 }; break;
+        case "ArrowLeft":  if (dir.x === 0) nextDir = { x: -1, y: 0 }; break;
+        case "ArrowRight": if (dir.x === 0) nextDir = { x: 1, y: 0 }; break;
+      }
+    });
+
+    canvas.addEventListener("touchstart", (e) => {
+      lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }, { passive: true });
+
+    canvas.addEventListener("touchend", (e) => {
+      if (gameOver) {
+        restart();
+        return;
+      }
+      const t = e.changedTouches[0];
+      const dx = t.clientX - lastTouch.x;
+      const dy = t.clientY - lastTouch.y;
+      const min = 30;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > min) {
+        if (dir.x === 0) nextDir = { x: dx > 0 ? 1 : -1, y: 0 };
+      } else if (Math.abs(dy) > min) {
+        if (dir.y === 0) nextDir = { x: 0, y: dy > 0 ? 1 : -1 };
+      }
+    }, { passive: true });
+
+    overEl.addEventListener("click", (e) => {
+      if (!gameOver) return;
+      if (e.target.closest("#overQuote")) return;
+      restart();
+    });
+
+    function restart() {
+      snake = [{ x: Math.floor(COLS / 2), y: Math.floor(ROWS / 2) }];
+      dir = nextDir = { x: 1, y: 0 };
+      score = 0;
+      gameOver = false;
+      scoreEl.textContent = "Score: 0";
+      placeFood();
+      draw();
+      overEl.classList.remove("show");
+    }
+  </script>
+</body>
+</html>
